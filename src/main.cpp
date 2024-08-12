@@ -27,23 +27,24 @@
 
 //const char* firebasePath = "/home";
 
-const char *ssid = "git";
-const char *password = "commit";
+const char *ssid = "Ximiao";
+const char *password = "12345679";
 const char *devicesName[] = {"door", "gate", "light1", "light2", "light3", "light4", "pump", "rack"};
 const char *sensorName[] = {"gas", "hum", "temp"};
 const char *prefixes = "abcdefghjkl";
 
-const char *firebasePath = "/home";
+//const char *firebasePath = "/home";
 const char *devicesPath = "/devices";
 const char *sensorsPath = "/sensors";
 
-const char *firebaseHost = "git-commit-default-rtdb.firebaseio.com";
+const char *firebaseHost = "controller-bcf36-default-rtdb.firebaseio.com";
 const char *firebaseAuth = "d2AnlPYBY9lWl0sN57CITh8EmpHxi479n0DR5hEH";
 
 uint8_t devicesState[NUM_DEVICES];
 uint16_t sensorsValue[NUM_SENSORS];
 
 unsigned long lastSet, lastGet;
+BluetoothSerial SerialBT;
 
 // FirebaseConfig config;
 // FirebaseAuth auth;
@@ -55,7 +56,7 @@ void connectWifi();
 void updateDevices();
 
 extern void setUpFirebase();
-extern void readChange();
+extern bool readChange();
 extern void updateDatabase();
 
 
@@ -67,7 +68,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     handleBluetooth,
     "BluetoothTask",
-    10000,
+    2048,
     NULL,
     1,
     NULL,
@@ -77,7 +78,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     handleFirebase,
     "FirebaseTask",
-    10000,
+    8192,
     NULL,
     1,
     NULL,
@@ -110,7 +111,9 @@ void handleFirebase(void *parameter) {
   connectWifi();
   setUpFirebase();
   while (true) {
-    readChange();
+    if(readChange()) {
+      updateDevices();
+    }
 
     if ((unsigned long)(millis() - lastSet) > 5000) {
       sensorsValue[0] = random(0, 100);
@@ -124,7 +127,28 @@ void handleFirebase(void *parameter) {
 }
 
 void handleBluetooth(void *parameter) {
+  Serial.printf("Free heap before Bluetooth initialization: %d\n", ESP.getFreeHeap());
+
+  //if (ESP.getFreeHeap() > 50000) { // Ensure sufficient memory is available
+  SerialBT.begin("ESP32_BT");  // Bluetooth device name
+  Serial.println("Bluetooth device name: ESP32_BT\n");
+  // } else {
+  //   Serial.println("Not enough memory to initialize Bluetooth.\n");
+  // }
+
   while (true) {
+    if (SerialBT.available()) {
+      String input = SerialBT.readString();
+      Serial.printf("Received message: %s\n", input);
+    }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
+}
+
+void updateDevices() {
+  digitalWrite(LED, devicesState[2]);
+  for (int i = 0; i < NUM_DEVICES; i++) {
+    Serial.printf("%d, ", devicesState[i]);
+  }
+  Serial.println();
 }

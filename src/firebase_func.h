@@ -6,7 +6,7 @@
 
 extern const char *devicesName[];
 extern const char *sensorName[];
-extern const char *firebasePath;
+//extern const char *firebasePath;
 
 extern const char *firebaseHost;
 extern const char *firebaseAuth;
@@ -19,7 +19,7 @@ extern FirebaseData firebaseData;
 
 // Declare the functions
 void setUpFirebase();
-void readChange();
+bool readChange();
 void updateDatabase();
 
 #endif // FIREBASE_FUNC_H
