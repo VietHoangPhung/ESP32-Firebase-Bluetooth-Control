@@ -1,4 +1,4 @@
-/*/home     path        prefix        name
+/*          path        prefix        name
   -> /devices
             /door       a             rolling door
             /gate       b             gate door
@@ -18,6 +18,7 @@
 #include <BluetoothSerial.h>
 #include <WiFi.h>
 #include "firebase_func.h"
+#include "bluetooth_func.h"
 
 #define LED 2
 #define BTN 4
@@ -30,21 +31,21 @@
 const char *ssid = "Ximiao";
 const char *password = "12345679";
 const char *devicesName[] = {"door", "gate", "light1", "light2", "light3", "light4", "pump", "rack"};
-const char *sensorName[] = {"gas", "hum", "temp"};
-const char *prefixes = "abcdefghjkl";
+const char *sensorsName[] = {"gas", "hum", "temp"};
+const char *prefixes = "abcdefgh";
 
 //const char *firebasePath = "/home";
 const char *devicesPath = "/devices";
 const char *sensorsPath = "/sensors";
 
-const char *firebaseHost = "controller-bcf36-default-rtdb.firebaseio.com";
-const char *firebaseAuth = "d2AnlPYBY9lWl0sN57CITh8EmpHxi479n0DR5hEH";
+const char *firebaseHost = "git-commit-default-rtdb.firebaseio.com";
+const char *firebaseAuth = "gitcommit";
 
 uint8_t devicesState[NUM_DEVICES];
 uint16_t sensorsValue[NUM_SENSORS];
 
 unsigned long lastSet, lastGet;
-BluetoothSerial SerialBT;
+//BluetoothSerial SerialBT;
 
 // FirebaseConfig config;
 // FirebaseAuth auth;
@@ -59,6 +60,10 @@ extern void setUpFirebase();
 extern bool readChange();
 extern void updateDatabase();
 
+extern void setUpBluetooth();
+extern bool readBluetooth();
+extern void stringToStates(const char*);
+
 
 void setup() {
   Serial.begin(112500);
@@ -68,7 +73,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     handleBluetooth,
     "BluetoothTask",
-    2048,
+    4096,
     NULL,
     1,
     NULL,
@@ -78,7 +83,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     handleFirebase,
     "FirebaseTask",
-    8192,
+    10240,
     NULL,
     1,
     NULL,
@@ -108,14 +113,16 @@ void connectWifi() {
 }
 
 void handleFirebase(void *parameter) {
+  Serial.printf("Free heap before WiFi and Firebase initialization: %d\n", ESP.getFreeHeap());
   connectWifi();
   setUpFirebase();
   while (true) {
     if(readChange()) {
+      Serial.printf("Free heap after reading change: %d\n", ESP.getFreeHeap());
       updateDevices();
     }
-
-    if ((unsigned long)(millis() - lastSet) > 5000) {
+    if (WiFi.status() == WL_CONNECTED && (unsigned long)(millis() - lastSet) > 5000) {
+      Serial.printf("Free heap before updating database: %d\n", ESP.getFreeHeap());
       sensorsValue[0] = random(0, 100);
       Serial.printf("Start: %ld, sending %d\n", millis(), sensorsValue[0]);
       updateDatabase();
@@ -129,17 +136,21 @@ void handleFirebase(void *parameter) {
 void handleBluetooth(void *parameter) {
   Serial.printf("Free heap before Bluetooth initialization: %d\n", ESP.getFreeHeap());
 
-  //if (ESP.getFreeHeap() > 50000) { // Ensure sufficient memory is available
-  SerialBT.begin("ESP32_BT");  // Bluetooth device name
-  Serial.println("Bluetooth device name: ESP32_BT\n");
-  // } else {
-  //   Serial.println("Not enough memory to initialize Bluetooth.\n");
-  // }
+  if (ESP.getFreeHeap() > 50000) { // Ensure sufficient memory is available
+    setUpBluetooth();
+  } else {
+    Serial.println("Not enough memory to initialize Bluetooth.\n");
+  }
+
 
   while (true) {
-    if (SerialBT.available()) {
-      String input = SerialBT.readString();
-      Serial.printf("Received message: %s\n", input);
+    if(readBluetooth()) {
+      Serial.printf("Free heap before updating devices: %d\n", ESP.getFreeHeap());
+      updateDevices();
+    } 
+    if ((unsigned long)(millis() - lastGet) > 2000) {
+      updateBluetooth();
+      lastGet = millis();
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -148,7 +159,7 @@ void handleBluetooth(void *parameter) {
 void updateDevices() {
   digitalWrite(LED, devicesState[2]);
   for (int i = 0; i < NUM_DEVICES; i++) {
-    Serial.printf("%d, ", devicesState[i]);
+    Serial.printf("%d ", devicesState[i]);
   }
   Serial.println();
 }

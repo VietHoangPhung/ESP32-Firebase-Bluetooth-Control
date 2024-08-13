@@ -5,7 +5,7 @@
 #define NUM_SENSORS 3
 
 extern const char *devicesName[];
-extern const char *sensorName[];
+extern const char *sensorsName[];
 
 //extern const char *firebasePath;
 extern const char *devicesPath;
@@ -89,7 +89,7 @@ void updateDatabase() {
     if (Firebase.ready()) {
         for (int i = 0; i < NUM_SENSORS; i++) {
             char path[25] = "\0";
-            snprintf(path, sizeof(path), "%s/%s", sensorsPath, sensorName[i]);
+            snprintf(path, sizeof(path), "%s/%s", sensorsPath, sensorsName[i]);
             Firebase.setInt(firebaseSetData, path, sensorsValue[i]);
         }
     }

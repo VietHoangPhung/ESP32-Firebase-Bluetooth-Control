@@ -5,7 +5,7 @@
 #include <FirebaseESP32.h>
 
 extern const char *devicesName[];
-extern const char *sensorName[];
+extern const char *sensorsName[];
 //extern const char *firebasePath;
 
 extern const char *firebaseHost;
