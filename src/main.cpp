@@ -21,11 +21,11 @@
 #include <WiFi.h>
 #include <EEPROM.h>
 #include "firebase_func.h"
-#include "bluetooth_func.h"
+//#include "bluetooth_func.h"
+#include "hc05.h"
 
 
 #define LED 2
-#define BTN 4
 #define NUM_DEVICES 8
 #define NUM_SENSORS 3
 #define NUM_WARNINGS 2
@@ -49,20 +49,19 @@ extern void setUpFirebase();
 extern bool readChange();
 extern void updateDatabase();
 
-extern void setUpBluetooth();
-extern bool readBluetooth();
-extern void stringToStates(const char*, uint8_t*);
+extern void setUpHc05();
+extern bool readHc05();
+extern void stringToStatesHc05(const char*, uint8_t*);
 
 void setup() {
-    Serial.begin(112500);
+    //Serial.begin(112500);
     pinMode(LED, OUTPUT);
-    pinMode(BTN, INPUT_PULLUP);
     EEPROM.begin(NUM_DEVICES);
     for (int i = 0; i < NUM_DEVICES; i++) {
         devicesState[i] = EEPROM.read(i);
-        Serial.printf("%d ", devicesState[i]);
+        //Serial.printf("%d ", devicesState[i]);
     }
-    Serial.println();
+    //Serial.println();
     updateDevices();
 
     xTaskCreatePinnedToCore(
@@ -101,7 +100,7 @@ void loop() {
 
 void connectWifi() {
     unsigned long startTime = millis();
-    Serial.println("Connecting to Wi-Fi ...");
+    //Serial.println("Connecting to Wi-Fi ...");
     WiFi.begin(ssid, password);
 
     // restart connecttin process if it takes too long 
@@ -114,24 +113,21 @@ void connectWifi() {
         }
     }
     //Serial.printf("Connected with IP: ");
-    Serial.println(WiFi.localIP());
+    //Serial.println(WiFi.localIP());
 }
 
 void handleFirebase(void *parameter) {
-    Serial.printf("Free heap before WiFi and Firebase initialization: %d\n", ESP.getFreeHeap());
+    //Serial.printf("Free heap before WiFi and Firebase initialization: %d\n", ESP.getFreeHeap());
     connectWifi();
     setUpFirebase();
     while (true) {
         if (readChange()) {
-            Serial.printf("Free heap after reading change: %d\n", ESP.getFreeHeap());
+            //Serial.printf("Free heap after reading change: %d\n", ESP.getFreeHeap());
             storeStates();
             updateDevices();
         }
         if (WiFi.status() == WL_CONNECTED && (unsigned long)(millis() - preDbUpdate) > 5000) {
-            Serial.printf("Free heap before updating database: %d\n", ESP.getFreeHeap());
-            sensorsValue[0] = random(0, 100);
-            sensorsValue[1] = random(0, 100);
-            sensorsValue[2] = random(0, 100);
+            //Serial.printf("Free heap before updating database: %d\n", ESP.getFreeHeap());
             //Serial.printf("Start: %ld, sending %d\n", millis(), sensorsValue[0]);
             updateDatabase();
             vTaskDelay(200 / portTICK_PERIOD_MS);
@@ -143,22 +139,26 @@ void handleFirebase(void *parameter) {
 }
 
 void handleBluetooth(void *parameter) {
-    Serial.printf("Free heap before Bluetooth initialization: %d\n", ESP.getFreeHeap());
+    //Serial.printf("Free heap before Bluetooth initialization: %d\n", ESP.getFreeHeap());
 
     // if (ESP.getFreeHeap() > 50000) { // Ensure sufficient memory is available
-        setUpBluetooth();
+        setUpHc05();
     // } else {
     //     //Serial.println("Not enough memory to initialize Bluetooth.\n");
     // }
     Serial.printf("Free heap after Bluetooth initialization: %d\n", ESP.getFreeHeap());
     while (true) {
-        if (readBluetooth()) {
-            Serial.printf("Free heap before updating devices: %d\n", ESP.getFreeHeap());
+        if (readHc05()) {
+            //Serial.printf("Free heap before updating devices: %d\n", ESP.getFreeHeap());
             storeStates();
             updateDevices();
         }
         if ((unsigned long)(millis() - preBtUpdate) > 2000) {
-            updateBluetooth();
+            sensorsValue[0] = random(0, 100);
+            sensorsValue[1] = random(0, 100);
+            sensorsValue[2] = random(0, 100);
+    
+            updateHc05();
             vTaskDelay(200 / portTICK_PERIOD_MS);
             preBtUpdate = millis();
         }
@@ -176,9 +176,9 @@ void handleBluetooth(void *parameter) {
 void updateDevices() {
     digitalWrite(LED, devicesState[2]);
     for (int i = 0; i < NUM_DEVICES; i++) {
-        Serial.printf("%d ", devicesState[i]);
+        //Serial.printf("%d ", devicesState[i]);
     }
-    Serial.println();
+    //Serial.println();
 }
 
 

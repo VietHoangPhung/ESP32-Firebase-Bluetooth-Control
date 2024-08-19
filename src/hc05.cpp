@@ -1,36 +1,40 @@
-#include "bluetooth_func.h"
+#include "hc05.h"
+#include <Arduino.h>
 
-BluetoothSerial SerialBT;
+HardwareSerial BTSerial(0);
 
-const char *prefixes = "abcdefgh";
-const char *nn = "xyz";
+//const char *prefixes = "abcdefgh";
+//const char *nn = "xyz";
 
-void setUpBluetooth() {
-    SerialBT.begin("ESP32_Controller");
-    Serial.println("Bluetooth is ready, device name: ESP32_Controller.");
+void setUpHc05() {
+  // Start serial communication with the HC-05 module
+    BTSerial.begin(9600, SERIAL_8N1, 3, 1); // 9600 is the default baud rate for HC-05
+  // RX pin is GPIO 3, TX pin is GPIO 1
+
+  Serial.println("ESP32 HC-05 Bluetooth Communication");
 }
 
-// read string from bluetooth and update devices' state
-bool readBluetooth() {
-    if (SerialBT.available()) {
-        Serial.printf("Free heap before reading input: %d\n", ESP.getFreeHeap());
+
+bool readHc05() {
+    if (BTSerial.available()) {
+        //Serial.printf("Free heap before reading input: %d\n", ESP.getFreeHeap());
         char inputBuffer[50];
         int index = 0;
 
-        while (SerialBT.available() && index < sizeof(inputBuffer) - 1) {
-            inputBuffer[index++] = SerialBT.read();
+        while (BTSerial.available() && index < sizeof(inputBuffer) - 1) {
+            inputBuffer[index++] = BTSerial.read();
         }
         inputBuffer[index] = '\0';
-
-        Serial.printf("Bluetooth received: %s\n", inputBuffer);
-        stringToStates(inputBuffer, devicesState);
+        //unsigned int heap = ESP.getFreeHeap();
+        BTSerial.printf("Echo: %s, freeH heap: %d\n", inputBuffer, ESP.getFreeHeap());
+        stringToStatesHc05(inputBuffer, devicesState);
         return true;
     }
     return false;
 }
 
 // assign devices' state based on input string
-void stringToStates(const char *input, uint8_t *pDevicesState) {
+void stringToStatesHc05(const char *input, uint8_t *pDevicesState) {
     while (*input) {
         const char *prefixPosition = strchr(prefixes, *input);
         if (prefixPosition) {
@@ -44,7 +48,7 @@ void stringToStates(const char *input, uint8_t *pDevicesState) {
 
 
 // update sensors' value to the app via bluetooth
-void updateBluetooth() {
+void updateHc05() {
     char outputBuffer[50] = {0};
     uint16_t *pSensorsValue = sensorsValue;
     int index = 0;                                                                                                                                                                                                                              
@@ -53,5 +57,5 @@ void updateBluetooth() {
         index += snprintf(outputBuffer + index, sizeof(outputBuffer) - index, "%c%d ", nn[i], pSensorsValue[i]);
     }
 
-    SerialBT.println(outputBuffer);
+    BTSerial.println(outputBuffer);
 }

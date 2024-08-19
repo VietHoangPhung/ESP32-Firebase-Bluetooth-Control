@@ -25,7 +25,8 @@ void setUpFirebase() {
     firebaseData.setBSSLBufferSize(4096, 512);
     firebaseSetData.setBSSLBufferSize(4096, 512);
     Firebase.begin(&config, &auth);
-    //firebaseData.keepAlive(8, 8, 1);
+    firebaseData.keepAlive(5, 5, 1);
+    firebaseSetData.keepAlive(5, 5, 1);
 
     if (!Firebase.beginStream(firebaseData, devicesPath)) {
         //Serial.printf("Failed to begin stream.\nReason: %s\n", firebaseData.errorReason().c_str());
@@ -64,6 +65,7 @@ bool readChange() {
             //     }
             //     return true;
             // } else 
+            // uint8_t *pDevicesState = devicesState;
             if (firebaseData.dataType() == "int") {
                 for (int i = 0; i < NUM_DEVICES; i++) {
                     if (firebaseData.dataPath().endsWith(devicesName[i])) {
@@ -81,6 +83,7 @@ bool readChange() {
 void updateDatabase() {
     if (Firebase.ready()) {
         FirebaseJson json;
+        //int heap = ESP.getFreeHeap();
         
         // Populate the JSON object with sensor values
         for (int i = 0; i < NUM_SENSORS; i++) {
@@ -88,12 +91,12 @@ void updateDatabase() {
         }
 
         // Set the entire JSON object in one operation
-        Serial.printf("Started updating: %d. Time: %ld\n", sensorsValue[0], millis());
+        //Serial.printf("Started updating: %d. Time: %ld\n", sensorsValue[0], millis());
         if (Firebase.set(firebaseSetData, sensorsPath, json)) {
-            Serial.println("Sensors data updated successfully.");
+            //Serial.println("Sensors data updated successfully.");
         } else {
-            Serial.printf("Failed to update sensors data. Reason: %s\n", firebaseSetData.errorReason().c_str());
+            //Serial.printf("Failed to update sensors data. Reason: %s\n", firebaseSetData.errorReason().c_str());
         }
-        Serial.printf("Finished updating: %d. Time: %ld\n", sensorsValue[0], millis());
+        //Serial.printf("Finished updating: %d. Time: %ld\n", sensorsValue[0], millis());
     }
 }
